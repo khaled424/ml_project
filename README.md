@@ -384,6 +384,7 @@ Le fichier `pipeline_prefect.py` définit quatre flows :
 - `code` : installation des dépendances, vérification Flake8 et tests pytest ;
 - `train` : préparation des données puis entraînement ;
 - `evaluate` : évaluation des données préparées avec le modèle sauvegardé ;
+- `api` : démarre l'API FastAPI avec Uvicorn et garde le flow actif tant que le serveur tourne ;
 - `all` : contrôles, préparation, entraînement et évaluation.
 
 Depuis `~/ml_project`, avec l'environnement virtuel activé :
@@ -392,6 +393,22 @@ Depuis `~/ml_project`, avec l'environnement virtuel activé :
 python pipeline_prefect.py --flow code
 python pipeline_prefect.py --flow train
 python pipeline_prefect.py --flow evaluate
+```
+
+Après avoir démarré le serveur Prefect (`prefect server start`), lance l'API
+via Prefect dans un terminal dédié :
+
+```bash
+python pipeline_prefect.py --flow api
+```
+
+Le flow reste actif pendant que le serveur Uvicorn tourne. Dans un autre
+terminal, teste `http://127.0.0.1:8000/docs`. Arrête le serveur avec `Ctrl+C`
+dans le terminal du flow lorsqu'il n'est plus nécessaire. Pour un lancement
+local sans Prefect, utilise directement :
+
+```bash
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Le flow `evaluate` nécessite que `train` ait déjà créé les fichiers

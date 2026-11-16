@@ -47,6 +47,7 @@ def check_code_quality() -> None:
             "model_pipeline.py",
             "main.py",
             "pipeline_prefect.py",
+            "app.py",
         ],
         cwd=PROJECT_DIR,
         check=True,
@@ -101,6 +102,27 @@ def evaluate_model_task() -> None:
     )
 
 
+@task(name="start-fastapi-server")
+def start_api_task() -> None:
+    """Lance Uvicorn au premier plan afin que Prefect suive le serveur."""
+    logger = get_run_logger()
+    logger.info("Démarrage de l'API FastAPI sur http://127.0.0.1:8000...")
+    subprocess.run(
+        [
+            PYTHON_BIN,
+            "-m",
+            "uvicorn",
+            "app:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8000",
+        ],
+        cwd=PROJECT_DIR,
+        check=True,
+    )
+
+
 @flow(name="code", log_prints=True)
 def flow_code() -> None:
     """Installe les dépendances puis vérifie le code et les tests."""
@@ -125,6 +147,13 @@ def flow_evaluate() -> None:
     evaluate_model_task()
 
 
+@flow(name="api", log_prints=True)
+def flow_api() -> None:
+    """Lance le serveur FastAPI et le garde actif pendant le flow."""
+    update_project()
+    start_api_task()
+
+
 @flow(name="all", log_prints=True)
 def flow_all() -> None:
     """Exécute les contrôles, puis tout le pipeline ML."""
@@ -139,7 +168,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Pipeline MLOps avec Prefect.")
     parser.add_argument(
         "--flow",
-        choices=["code", "train", "evaluate", "all"],
+        choices=["code", "train", "evaluate", "api", "all"],
         default="all",
         help="Flow à exécuter.",
     )
@@ -149,6 +178,7 @@ def main() -> None:
         "code": flow_code,
         "train": flow_train,
         "evaluate": flow_evaluate,
+        "api": flow_api,
         "all": flow_all,
     }
     flows[args.flow]()
