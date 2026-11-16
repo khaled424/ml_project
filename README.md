@@ -470,13 +470,15 @@ python main.py --evaluate
 ```
 
 La base SQLite et les artefacts MLflow sont des sorties locales ignorées par
-Git. Pour les consulter, lance l'UI depuis la racine du projet afin qu'elle
-utilise la même base que le pipeline :
+Git. Pour simplifier le lancement de l'interface, depuis WSL exécute :
 
 ```bash
-mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
+cd ~/ml_project
+python start_mlflow_ui.py
 ```
 
-Ouvre ensuite `http://127.0.0.1:5000`, puis sélectionne
+Le script utilise le Python de `venv` et la même base SQLite que le pipeline,
+quel que soit le répertoire courant. Garde le terminal ouvert, puis ouvre
+`http://127.0.0.1:5000` et sélectionne
 `Churn_Prediction_Experiment`. La préparation des données seule ne crée pas de
 run ; le run est enregistré quand le modèle est entraîné et évalué.
