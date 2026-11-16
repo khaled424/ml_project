@@ -4,3 +4,8 @@ __pycache__/
 .prefect/
 *.joblib
 Churn_Modelling.csv
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+mlartifacts/
+mlruns/

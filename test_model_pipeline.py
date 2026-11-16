@@ -1,5 +1,6 @@
 import os
 
+import mlflow
 import pandas as pd
 import pytest
 
@@ -11,6 +12,7 @@ from model_pipeline import (
     preprocess_data,
     save_model,
     split_data,
+    train_and_log_model,
     train_model,
 )
 
@@ -153,6 +155,35 @@ def test_save_and_load_model(sample_df, tmp_path):
 
     loaded_model = load_model(str(model_path))
     assert hasattr(loaded_model, 'predict')
+
+
+def test_train_and_log_model_records_mlflow_run(sample_df, tmp_path, monkeypatch):
+    tracking_db = tmp_path / "tracking.db"
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", f"sqlite:///{tracking_db}")
+    X, y = preprocess_data(sample_df)
+    X_train, X_test, y_train, y_test = split_data(
+        X,
+        y,
+        test_size=0.5,
+        random_state=42,
+    )
+
+    model_path = tmp_path / "classifier.joblib"
+    _, metrics = train_and_log_model(
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        model_path=str(model_path),
+    )
+
+    runs = mlflow.search_runs(
+        experiment_names=["Churn_Prediction_Experiment"]
+    )
+    assert len(runs) == 1
+    assert "metrics.accuracy" in runs.columns
+    assert metrics["accuracy"] == pytest.approx(runs.iloc[0]["metrics.accuracy"])
+    assert model_path.exists()
 
 
 def test_load_data_missing_file():

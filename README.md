@@ -445,3 +445,38 @@ prefect deployment run 'all/ml-pipeline-all'
 ```
 
 L'interface de suivi est disponible sur `http://localhost:4200`.
+
+## 8. Suivre les expériences avec MLflow
+
+`model_pipeline.py` enregistre chaque entraînement avec le nom d'expérience
+`Churn_Prediction_Experiment`. Un run contient les paramètres du Random Forest,
+les métriques calculées sur le jeu de test (`accuracy`, `precision`, `recall`,
+`f1_score`), la matrice de confusion en JSON et le modèle scikit-learn dans le
+Model Registry sous `ChurnRandomForestModel`. Une copie locale du modèle reste
+également sauvegardée dans `classifier.joblib`.
+
+La commande complète trace un run :
+
+```bash
+python main.py
+```
+
+Le parcours par étapes trace le run pendant l'entraînement :
+
+```bash
+python main.py --prepare
+python main.py --train
+python main.py --evaluate
+```
+
+La base SQLite et les artefacts MLflow sont des sorties locales ignorées par
+Git. Pour les consulter, lance l'UI depuis la racine du projet afin qu'elle
+utilise la même base que le pipeline :
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
+```
+
+Ouvre ensuite `http://127.0.0.1:5000`, puis sélectionne
+`Churn_Prediction_Experiment`. La préparation des données seule ne crée pas de
+run ; le run est enregistré quand le modèle est entraîné et évalué.

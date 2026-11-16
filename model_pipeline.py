@@ -1,15 +1,42 @@
 import os
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import joblib
+import mlflow
+import mlflow.sklearn
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 TARGET_COLUMN = "Exited"
 DEFAULT_MODEL_PATH = "/home/khaled/ml_project/classifier.joblib"
+MLFLOW_EXPERIMENT_NAME = "Churn_Prediction_Experiment"
+MLFLOW_MODEL_NAME = "ChurnRandomForestModel"
+
+
+def configure_mlflow() -> None:
+    """Configure MLflow avec la base SQLite locale du projet.
+
+    La variable ``MLFLOW_TRACKING_URI`` peut remplacer l'URI locale, notamment
+    pour isoler les tests. L'interface MLflow doit utiliser la même base.
+    """
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+    if not tracking_uri:
+        tracking_db = Path(__file__).resolve().parent / "mlflow.db"
+        tracking_uri = f"sqlite:///{tracking_db}"
+
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
 
 def load_data(data_path: str) -> pd.DataFrame:
@@ -237,6 +264,72 @@ def evaluate_model(model: RandomForestClassifier, X_test: pd.DataFrame, y_test: 
     }
 
 
+def train_and_log_model(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    model_path: str = DEFAULT_MODEL_PATH,
+) -> Tuple[RandomForestClassifier, Dict[str, Any]]:
+    """Entraîne, évalue et trace une expérience MLflow complète.
+
+    Args:
+        X_train: Variables explicatives utilisées pour l'entraînement.
+        y_train: Cible associée aux lignes de ``X_train``.
+        X_test: Variables explicatives réservées à l'évaluation.
+        y_test: Vérités terrain associées aux lignes de ``X_test``.
+        model_path: Chemin où sauvegarder également le modèle avec joblib.
+
+    Returns:
+        Le modèle entraîné et les métriques calculées sur le jeu de test.
+
+    Raises:
+        ValueError: Si les données ou le chemin du modèle sont invalides.
+        OSError: Si le modèle local ne peut pas être sauvegardé.
+        Les erreurs MLflow de configuration, tracking ou registre sont
+        propagées à l'appelant.
+    """
+    configure_mlflow()
+
+    with mlflow.start_run(run_name="RandomForest_Run"):
+        model = train_model(X_train, y_train)
+        metrics = evaluate_model(model, X_test, y_test)
+
+        mlflow.log_params(
+            {
+                "n_estimators": model.n_estimators,
+                "random_state": model.random_state,
+                "test_size": len(X_test) / (len(X_train) + len(X_test)),
+                "feature_count": X_train.shape[1],
+            }
+        )
+        mlflow.log_metrics(
+            {
+                "accuracy": metrics["accuracy"],
+                "precision": precision_score(y_test, metrics["predictions"], zero_division=0),
+                "recall": recall_score(y_test, metrics["predictions"], zero_division=0),
+                "f1_score": f1_score(y_test, metrics["predictions"], zero_division=0),
+            }
+        )
+        mlflow.log_dict(
+            {
+                "labels": [0, 1],
+                "matrix": metrics["confusion_matrix"].tolist(),
+            },
+            "confusion_matrix.json",
+        )
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            name="random_forest_model",
+            registered_model_name=MLFLOW_MODEL_NAME,
+            input_example=X_train.head(5),
+            serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE,
+        )
+        save_model(model, model_path)
+
+    return model, metrics
+
+
 def save_model(model: RandomForestClassifier, output_path: str = DEFAULT_MODEL_PATH) -> str:
     """Sérialise le modèle entraîné au chemin indiqué avec joblib.
 
@@ -313,8 +406,10 @@ def run_pipeline(data_path: str, model_path: str = DEFAULT_MODEL_PATH) -> Tuple[
         OSError: Si le modèle ne peut pas être sauvegardé.
     """
     X_train, X_test, y_train, y_test = prepare_data(data_path)
-    model = train_model(X_train, y_train)
-    metrics = evaluate_model(model, X_test, y_test)
-    save_model(model, model_path)
-
-    return model, metrics
+    return train_and_log_model(
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        model_path=model_path,
+    )

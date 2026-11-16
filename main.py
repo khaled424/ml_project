@@ -12,8 +12,7 @@ from model_pipeline import (
     load_model,
     prepare_data,
     run_pipeline,
-    save_model,
-    train_model,
+    train_and_log_model,
 )
 
 DEFAULT_DATA_PATH = "/home/khaled/ml_project/Churn_Modelling.csv"
@@ -118,10 +117,15 @@ def main() -> None:
         print(f"X_test  : {X_test.shape}; y_test  : {y_test.shape}")
         print(f"Données préparées sauvegardées dans : {args.prepared_data_path}")
     elif args.train:
-        X_train, _, y_train, _ = load_prepared_data(args.prepared_data_path)
-        model = train_model(X_train, y_train)
-        save_model(model, args.model_path)
-        print(f"Entraînement terminé. Modèle sauvegardé dans : {args.model_path}")
+        X_train, X_test, y_train, y_test = load_prepared_data(args.prepared_data_path)
+        _, metrics = train_and_log_model(
+            X_train,
+            y_train,
+            X_test,
+            y_test,
+            model_path=args.model_path,
+        )
+        print_metrics(metrics, args.model_path)
     elif args.evaluate:
         _, X_test, _, y_test = load_prepared_data(args.prepared_data_path)
         model: RandomForestClassifier = load_model(args.model_path)
