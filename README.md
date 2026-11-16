@@ -4,6 +4,42 @@ Ce projet charge `data/Churn_Modelling.csv`, prépare les données, entraîne un
 Random Forest, affiche les métriques et sauvegarde le modèle dans
 `artifacts/classifier.joblib`.
 
+## Démarrage rapide (WSL)
+
+Depuis le terminal Ubuntu/WSL, avec Docker Desktop démarré :
+
+```bash
+cd ~/ml_project
+# Première installation seulement : décommente cette ligne.
+# python3 -m venv venv
+source venv/bin/activate
+python -m pip install -r requirements.txt
+docker compose config -q
+docker compose up --build -d
+docker compose ps
+```
+
+Le projet démarre l'API FastAPI, l'interface Streamlit, MLflow, Elasticsearch
+et Kibana. Attends que les services soient prêts, puis utilise :
+
+| Service | Adresse |
+|---|---|
+| Interface de prédiction | <http://localhost:8501> |
+| API et documentation Swagger | <http://localhost:8001/docs> |
+| MLflow | <http://localhost:5001> |
+| Elasticsearch | <http://localhost:9200> |
+| Kibana | <http://localhost:5601> |
+
+Pour arrêter les conteneurs sans supprimer le volume de données MLflow :
+
+```bash
+docker compose down
+```
+
+Pour les détails, le test manuel de l'API et les ateliers, consulte
+[Démarrer le projet de bout en bout](docs/guide_revision_mlops.md#9-démarrer-le-projet-de-bout-en-bout)
+et le [guide PDF de révision MLOps](docs/guide_revision_mlops.pdf).
+
 ## Structure du projet
 
 - `data/` : CSV d'entraînement et notebook original.
@@ -561,38 +597,62 @@ Après validation, `python pipeline_prefect.py --flow cd` reconstruit l'image
 Docker Hub. Cette commande nécessite une authentification Docker Hub déjà
 active.
 
-## 10. Interface Streamlit et serveur MLflow conteneurisés
+## 10. Interface Streamlit, MLflow et services Docker
 
-`compose.yaml` construit et lance trois services : l'API FastAPI, l'interface
-Streamlit et le serveur MLflow. Les ports hôte `8001`, `8501` et `5001` sont
-liés à `127.0.0.1` et évitent les services déjà utilisés sur `8000` et `5000`.
-
-Vérifie la configuration, puis démarre les services :
+`compose.yaml` démarre cinq services : FastAPI, Streamlit, MLflow,
+Elasticsearch et Kibana. Le frontend appelle l'API sur le réseau Docker via
+`http://api:8000/predict`. Les ports hôte sont liés à `127.0.0.1`.
 
 ```bash
-docker compose config
+docker compose config -q
 docker compose up --build -d
 docker compose ps
+docker compose logs --tail=50 api frontend mlflow elasticsearch kibana
 ```
 
-Ouvre l'interface Streamlit sur `http://localhost:8501`, l'API sur
-`http://localhost:8001/docs` et le suivi MLflow sur `http://localhost:5001`.
-Streamlit appelle l'API sur le réseau Docker via `http://api:8000/predict`.
+Adresses locales : Streamlit `http://localhost:8501`, API Swagger
+`http://localhost:8001/docs`, MLflow `http://localhost:5001`, Elasticsearch
+`http://localhost:9200` et Kibana `http://localhost:5601`.
 
-Le serveur MLflow conserve sa base SQLite et ses artefacts dans le volume
-Docker nommé `mlflow_data`. Pour envoyer un entraînement lancé depuis WSL vers
-ce serveur, exécute :
+Pour exécuter le pipeline ML directement dans WSL :
+
+```bash
+python main.py
+```
+
+Pour envoyer ce run à MLflow dans Docker plutôt qu'à la base MLflow locale :
 
 ```bash
 MLFLOW_TRACKING_URI=http://127.0.0.1:5001 python main.py
 ```
 
-Les nouveaux runs, métriques et modèles seront visibles dans l'interface
-MLflow. Pour arrêter les services sans supprimer les données persistantes :
+Le serveur MLflow Docker conserve la base et les artefacts dans le volume
+nommé `mlflow_data`. `python start_mlflow_ui.py` lance plutôt l'UI MLflow
+locale sur le port `5000`, utilisant la base locale `mlflow.db` : ce sont deux
+stockages distincts.
+
+## 11. Monitoring de l'Atelier 7
+
+Après le démarrage de Docker Compose, le script réutilise le pipeline existant,
+journalise un run et indexe ses métriques. Elasticsearch doit être prêt avant
+l'exécution :
 
 ```bash
-docker compose down
+sudo sysctl -w vm.max_map_count=262144  # si requis par WSL
+docker compose up -d mlflow elasticsearch kibana
+source venv/bin/activate
+python monitoring_pipeline.py
 ```
 
-N'utilise pas `docker compose down -v` si tu veux conserver la base MLflow et
-les artefacts du volume.
+Le script crée `mlflow-metrics` avec le mapping nécessaire s'il n'existe pas.
+Dans Kibana, crée une Data View nommée `mlflow-metrics` avec `@timestamp`,
+puis consulte **Discover**. L'entraînement de monitoring peut créer un
+nouveau run MLflow et une nouvelle version du modèle enregistré.
+
+Pour la fiche d'examen détaillée, l'architecture par fichier, les concepts et
+les résultats observés, consulte
+[le guide de révision MLOps](docs/guide_revision_mlops.md) et son
+[PDF](docs/guide_revision_mlops.pdf).
+
+Ne lance pas `docker compose down -v` si tu souhaites conserver les données
+MLflow du volume Docker.
