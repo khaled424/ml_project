@@ -386,6 +386,7 @@ Le fichier `pipeline_prefect.py` définit quatre flows :
 - `evaluate` : évaluation des données préparées avec le modèle sauvegardé ;
 - `api` : démarre l'API FastAPI avec Uvicorn et garde le flow actif tant que le serveur tourne ;
 - `all` : contrôles, préparation, entraînement et évaluation.
+- `cd` : reconstruit l'image Docker, la tague et la publie sur Docker Hub.
 
 Depuis `~/ml_project`, avec l'environnement virtuel activé :
 
@@ -394,6 +395,17 @@ python pipeline_prefect.py --flow code
 python pipeline_prefect.py --flow train
 python pipeline_prefect.py --flow evaluate
 ```
+
+Pour publier l'image avec Prefect, connecte-toi d'abord à Docker Hub avec
+`docker login`, puis lance :
+
+```bash
+python pipeline_prefect.py --flow cd
+```
+
+Le flow utilise les valeurs `DOCKER_IMAGE_NAME`, `DOCKERHUB_USERNAME` et
+`DOCKER_IMAGE_TAG` définies dans `pipeline_prefect.py`. Il publie le tag
+`1.0` sur Docker Hub.
 
 Après avoir démarré le serveur Prefect (`prefect server start`), lance l'API
 via Prefect dans un terminal dédié :

@@ -9,6 +9,9 @@ PROJECT_DIR = Path(__file__).resolve().parent
 PYTHON_BIN = sys.executable
 MAIN_PY = PROJECT_DIR / "main.py"
 REQUIREMENTS_FILE = PROJECT_DIR / "requirements.txt"
+DOCKER_IMAGE_NAME = "khaled_4bi6_mlops"
+DOCKERHUB_USERNAME = "khaledgannounhahahaha"
+DOCKER_IMAGE_TAG = "1.0"
 
 
 @task(name="update-project")
@@ -123,6 +126,42 @@ def start_api_task() -> None:
     )
 
 
+@task(name="build-docker-image")
+def build_docker_image_task() -> None:
+    """Construit l'image Docker depuis la racine du projet."""
+    logger = get_run_logger()
+    image = f"{DOCKER_IMAGE_NAME}:latest"
+    logger.info("Construction de l'image Docker %s...", image)
+    subprocess.run(
+        ["docker", "build", "-t", image, "."],
+        cwd=PROJECT_DIR,
+        check=True,
+    )
+
+
+@task(name="push-docker-image")
+def push_docker_image_task() -> None:
+    """Tague l'image puis la publie sur Docker Hub."""
+    logger = get_run_logger()
+    local_image = f"{DOCKER_IMAGE_NAME}:latest"
+    remote_image = (
+        f"{DOCKERHUB_USERNAME}/{DOCKER_IMAGE_NAME}:{DOCKER_IMAGE_TAG}"
+    )
+
+    logger.info("Tag de l'image vers %s...", remote_image)
+    subprocess.run(
+        ["docker", "tag", local_image, remote_image],
+        cwd=PROJECT_DIR,
+        check=True,
+    )
+    logger.info("Publication de l'image sur Docker Hub...")
+    subprocess.run(
+        ["docker", "push", remote_image],
+        cwd=PROJECT_DIR,
+        check=True,
+    )
+
+
 @flow(name="code", log_prints=True)
 def flow_code() -> None:
     """Installe les dépendances puis vérifie le code et les tests."""
@@ -163,12 +202,19 @@ def flow_all() -> None:
     evaluate_model_task()
 
 
+@flow(name="cd-docker-pipeline", log_prints=True)
+def flow_cd() -> None:
+    """Construit et publie l'image Docker de l'API."""
+    build_docker_image_task()
+    push_docker_image_task()
+
+
 def main() -> None:
     """Sélectionne et exécute un flow depuis la ligne de commande."""
     parser = argparse.ArgumentParser(description="Pipeline MLOps avec Prefect.")
     parser.add_argument(
         "--flow",
-        choices=["code", "train", "evaluate", "api", "all"],
+        choices=["code", "train", "evaluate", "api", "all", "cd"],
         default="all",
         help="Flow à exécuter.",
     )
@@ -180,6 +226,7 @@ def main() -> None:
         "evaluate": flow_evaluate,
         "api": flow_api,
         "all": flow_all,
+        "cd": flow_cd,
     }
     flows[args.flow]()
 
