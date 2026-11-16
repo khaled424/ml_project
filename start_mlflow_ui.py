@@ -11,7 +11,10 @@ if not PYTHON_BIN.is_file():
         f"Python de l'environnement virtuel introuvable : {PYTHON_BIN}",
         file=sys.stderr,
     )
-    print("Créez l'environnement puis installez requirements.txt.", file=sys.stderr)
+    print(
+        "Créez l'environnement puis installez requirements.txt.",
+        file=sys.stderr,
+    )
     raise SystemExit(1)
 
 command = [

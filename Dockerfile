@@ -1,17 +1,25 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+COPY requirements.txt ./
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir -c requirements.txt \
+        fastapi joblib numpy pandas scikit-learn uvicorn
+
+FROM python:3.12-slim AS runtime
 
 LABEL maintainer="MLOps Student"
 LABEL description="FastAPI churn prediction API"
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
+ENV PATH="/opt/venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app.py model_pipeline.py classifier.joblib ./
+COPY --from=builder /opt/venv /opt/venv
+COPY app.py model_pipeline.py ./
+COPY artifacts/classifier.joblib ./artifacts/classifier.joblib
 
 EXPOSE 8000
 

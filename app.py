@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from model_pipeline import load_model
 
-MODEL_PATH = Path(__file__).resolve().parent / "classifier.joblib"
+MODEL_PATH = Path(__file__).resolve().parent / "artifacts" / "classifier.joblib"
 model = load_model(str(MODEL_PATH))
 
 FEATURE_COLUMNS = [

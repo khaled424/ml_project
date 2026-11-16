@@ -1,8 +1,21 @@
 # Pipeline de prédiction du churn client
 
-Ce projet charge `Churn_Modelling.csv`, prépare les données, entraîne une
+Ce projet charge `data/Churn_Modelling.csv`, prépare les données, entraîne une
 Random Forest, affiche les métriques et sauvegarde le modèle dans
-`classifier.joblib`.
+`artifacts/classifier.joblib`.
+
+## Structure du projet
+
+- `data/` : CSV d'entraînement et notebook original.
+- `artifacts/` : modèle entraîné et données préparées, générés localement.
+- `requirements.txt` : dépendances du projet pour le développement, l'API,
+  l'interface Streamlit, MLflow et l'atelier 7 (Elasticsearch).
+- Les images Docker installent uniquement leur sous-ensemble d'exécution,
+  versionné par `requirements.txt`, afin de rester légères.
+- `tests/` : tests automatisés.
+- `docs/` : supports des ateliers et documentation complémentaire.
+- Les scripts exécutables, Dockerfiles et `compose.yaml` restent à la racine
+  pour conserver des commandes simples.
 
 ## 1. Ouvrir le projet dans WSL
 
@@ -12,10 +25,10 @@ Dans le terminal WSL :
 cd ~/ml_project
 ```
 
-Le fichier CSV doit être dans ce dossier. Vérifiez sa présence avec :
+Le fichier CSV se trouve dans `data/`. Vérifiez sa présence avec :
 
 ```bash
-ls
+ls data
 ```
 
 ## 2. Activer l'environnement Python
@@ -51,12 +64,12 @@ python main.py
 ```
 
 Le programme doit afficher l'accuracy, le rapport de classification et la
-matrice de confusion. Le modèle est écrit dans `classifier.joblib`.
+matrice de confusion. Le modèle est écrit dans `artifacts/classifier.joblib`.
 
 Vous pouvez modifier les chemins si besoin :
 
 ```bash
-python main.py --data-path ./Churn_Modelling.csv --model-path ./classifier.joblib
+python main.py --data-path ./data/Churn_Modelling.csv --model-path ./artifacts/classifier.joblib
 ```
 
 Le script accepte aussi les options `--prepare`, `--train` et `--evaluate`,
@@ -68,19 +81,19 @@ python main.py --train
 python main.py --evaluate
 ```
 
-`--prepare` crée `prepared_data.joblib`, `--train` lit ce fichier et crée
-`classifier.joblib`, puis `--evaluate` recharge ces deux artefacts pour afficher
-les métriques. Si tu modifies les chemins, utilise les mêmes options à chaque
+`--prepare` crée `artifacts/prepared_data.joblib`, `--train` lit ce fichier et crée
+`artifacts/classifier.joblib`, puis `--evaluate` recharge ces deux artefacts pour
+afficher les métriques. Si tu modifies les chemins, utilise les mêmes options à chaque
 étape :
 
 ```bash
-python main.py --prepare --data-path ./Churn_Modelling.csv --prepared-data-path ./prepared_data.joblib
-python main.py --train --prepared-data-path ./prepared_data.joblib --model-path ./classifier.joblib
-python main.py --evaluate --prepared-data-path ./prepared_data.joblib --model-path ./classifier.joblib
+python main.py --prepare --data-path ./data/Churn_Modelling.csv --prepared-data-path ./artifacts/prepared_data.joblib
+python main.py --train --prepared-data-path ./artifacts/prepared_data.joblib --model-path ./artifacts/classifier.joblib
+python main.py --evaluate --prepared-data-path ./artifacts/prepared_data.joblib --model-path ./artifacts/classifier.joblib
 ```
 
 Les étapes `--train` et `--evaluate` dépendent des fichiers créés auparavant :
-exécuter `--train` seul échoue si `prepared_data.joblib` n'existe pas encore ;
+exécuter `--train` seul échoue si `artifacts/prepared_data.joblib` n'existe pas encore ;
 exécuter `--evaluate` exige à la fois les données préparées et un modèle
 entraîné. Sans option d'étape, `python main.py` continue d'exécuter tout le
 pipeline en une fois.
@@ -102,7 +115,7 @@ from model_pipeline import (
 )
 
 # Chargement : retourne un DataFrame.
-df = load_data("Churn_Modelling.csv")
+df = load_data("data/Churn_Modelling.csv")
 print(df.shape, df.columns.tolist())
 
 # Prétraitement : retourne X (variables) et y (cible).
@@ -124,8 +137,8 @@ print(metrics["classification_report"])
 print(metrics["confusion_matrix"])
 
 # Sauvegarde puis rechargement du modèle.
-save_model(model, "classifier.joblib")
-loaded_model = load_model("classifier.joblib")
+save_model(model, "artifacts/classifier.joblib")
+loaded_model = load_model("artifacts/classifier.joblib")
 print(loaded_model.predict(X_test.head()))
 ```
 
@@ -141,7 +154,7 @@ non numériques.
 Depuis le dossier du projet, toujours avec l'environnement activé :
 
 ```bash
-python -m pytest -v test_model_pipeline.py
+python -m pytest -v tests/test_model_pipeline.py
 ```
 
 Les tests vérifient les principales fonctions avec un petit jeu de données de
@@ -151,7 +164,7 @@ test temporaire. Ils ne modifient pas le CSV de production ni le modèle existan
 
 ### Prérequis et objectifs
 
-Le notebook `customer_churn.ipynb` fonctionne et contient les étapes
+Le notebook `data/customer_churn.ipynb` fonctionne et contient les étapes
 d'exploration, de préparation, d'entraînement et d'évaluation. Le but du TP est
 de transformer ces cellules en fonctions réutilisables, puis de les exécuter
 depuis un script principal.
@@ -185,7 +198,7 @@ nécessaires pour exécuter le pipeline final.
 
 #### `load_data(data_path)`
 
-- **Entrée :** chemin vers le fichier CSV, par exemple `Churn_Modelling.csv`.
+- **Entrée :** chemin vers le fichier CSV, par exemple `data/Churn_Modelling.csv`.
 - **Sortie :** un DataFrame pandas.
 - **Vérifications :** le chemin doit exister et le CSV ne doit pas être vide.
 
@@ -312,7 +325,7 @@ aux vraies valeurs avec `y_test.head()`.
 #### `save_model(model, output_path)`
 
 La fonction sérialise le Random Forest avec joblib. Sans argument, le chemin
-par défaut est `/home/khaled/ml_project/classifier.joblib`.
+par défaut est `artifacts/classifier.joblib`.
 
 #### `load_model(model_path)`
 
@@ -321,7 +334,7 @@ La fonction recharge un modèle sauvegardé et retourne le
 le réentraîner :
 
 ```python
-loaded_model = load_model("classifier.joblib")
+loaded_model = load_model("artifacts/classifier.joblib")
 predictions = loaded_model.predict(X_test.head())
 ```
 
@@ -347,7 +360,7 @@ python main.py
 Les chemins d'entrée et de sortie peuvent aussi être fournis en arguments :
 
 ```bash
-python main.py --data-path ./Churn_Modelling.csv --model-path ./classifier.joblib
+python main.py --data-path ./data/Churn_Modelling.csv --model-path ./artifacts/classifier.joblib
 ```
 
 La commande est `python`, et non `pyhton`.
@@ -357,10 +370,10 @@ La commande est `python`, et non `pyhton`.
 La commande suivante exécute les tests :
 
 ```bash
-python -m pytest -v test_model_pipeline.py
+python -m pytest -v tests/test_model_pipeline.py
 ```
 
-Le résultat observé est **12 tests réussis** (`12 passed`). Ils vérifient
+Le résultat observé est **13 tests réussis** (`13 passed`). Ils vérifient
 notamment le chargement, le prétraitement, la séparation, l'entraînement,
 l'évaluation, la sauvegarde et le chargement, ainsi que des entrées invalides
 (fichier absent, cible absente, valeurs manquantes, taille de test invalide).
@@ -405,7 +418,7 @@ python pipeline_prefect.py --flow cd
 
 Le flow utilise les valeurs `DOCKER_IMAGE_NAME`, `DOCKERHUB_USERNAME` et
 `DOCKER_IMAGE_TAG` définies dans `pipeline_prefect.py`. Il publie le tag
-`1.0` sur Docker Hub.
+`2.0` sur Docker Hub.
 
 Après avoir démarré le serveur Prefect (`prefect server start`), lance l'API
 via Prefect dans un terminal dédié :
@@ -424,14 +437,15 @@ uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Le flow `evaluate` nécessite que `train` ait déjà créé les fichiers
-`prepared_data.joblib` et `classifier.joblib`. Pour tout exécuter d'un coup :
+`artifacts/prepared_data.joblib` et `artifacts/classifier.joblib`. Pour tout
+exécuter d'un coup :
 
 ```bash
 python pipeline_prefect.py --flow all
 ```
 
 Pour démarrer le serveur Prefect et créer un déploiement planifié, suis la
-section « Automatisation et Déploiement » de `atelier_3_prefect.md`. Le script
+section « Automatisation et Déploiement » de `docs/atelier_3_prefect.md`. Le script
 `deploiement_prefect.py` enregistre `flow_all` avec une planification
 quotidienne à 02:00, heure de Tunis.
 
@@ -465,7 +479,7 @@ L'interface de suivi est disponible sur `http://localhost:4200`.
 les métriques calculées sur le jeu de test (`accuracy`, `precision`, `recall`,
 `f1_score`), la matrice de confusion en JSON et le modèle scikit-learn dans le
 Model Registry sous `ChurnRandomForestModel`. Une copie locale du modèle reste
-également sauvegardée dans `classifier.joblib`.
+également sauvegardée dans `artifacts/classifier.joblib`.
 
 La commande complète trace un run :
 
@@ -494,3 +508,91 @@ quel que soit le répertoire courant. Garde le terminal ouvert, puis ouvre
 `http://127.0.0.1:5000` et sélectionne
 `Churn_Prediction_Experiment`. La préparation des données seule ne crée pas de
 run ; le run est enregistré quand le modèle est entraîné et évalué.
+
+## 9. Optimiser l'image Docker avec un build multi-stage
+
+`Dockerfile` utilise une étape `builder` pour installer les dépendances API
+dans un environnement virtuel, puis ne copie que cet environnement et les
+fichiers nécessaires dans l'image `runtime`. Il installe uniquement les
+paquets API et utilise `requirements.txt` comme fichier de contraintes pour
+conserver les versions épinglées sans ajouter les outils de développement à
+l'image. Les imports MLflow de `model_pipeline.py` sont différés jusqu'à
+l'entraînement, afin que l'API n'ait pas besoin de MLflow à l'exécution.
+`.dockerignore` exclut notamment le CSV, l'environnement virtuel et les fichiers
+de suivi.
+
+La taille observée localement est passée de **1,78 Go** pour l'image initiale à
+**705 Mo** pour l'image multi-stage, soit environ **60 % de réduction**. Ces
+tailles peuvent varier légèrement selon la plateforme Docker. Avant de lancer
+le flow `cd` (qui reconstruit `latest` avec le nouveau Dockerfile), compare les
+tags locaux avec :
+
+```bash
+docker image ls khaled_4bi6_mlops
+```
+
+Pour reconstruire et tester l'image optimisée indépendamment de Compose :
+
+```bash
+docker build -t khaled_4bi6_mlops:optimized .
+docker run -d --rm -p 8002:8000 --name api_churn_optimized_test khaled_4bi6_mlops:optimized
+docker logs api_churn_optimized_test
+```
+
+Attends le message de démarrage d'Uvicorn, puis vérifie la santé et une vraie
+prédiction (le conteneur initial peut déjà utiliser le port `8000`) :
+
+```bash
+curl http://127.0.0.1:8002/
+curl -X POST http://127.0.0.1:8002/predict \
+  -H "Content-Type: application/json" \
+  -d '{"CreditScore":650,"Gender":"Female","Age":42,"Tenure":3,"Balance":0.0,"NumOfProducts":2,"HasCrCard":1,"IsActiveMember":1,"EstimatedSalary":100000.0}'
+```
+
+La réponse de `POST /predict` doit contenir `prediction`,
+`interpretation` et `probability_churn`. Arrête ensuite le conteneur de test :
+
+```bash
+docker stop api_churn_optimized_test
+```
+
+Après validation, `python pipeline_prefect.py --flow cd` reconstruit l'image
+`latest` avec le Dockerfile multi-stage, puis publie la version `2.0` sur
+Docker Hub. Cette commande nécessite une authentification Docker Hub déjà
+active.
+
+## 10. Interface Streamlit et serveur MLflow conteneurisés
+
+`compose.yaml` construit et lance trois services : l'API FastAPI, l'interface
+Streamlit et le serveur MLflow. Les ports hôte `8001`, `8501` et `5001` sont
+liés à `127.0.0.1` et évitent les services déjà utilisés sur `8000` et `5000`.
+
+Vérifie la configuration, puis démarre les services :
+
+```bash
+docker compose config
+docker compose up --build -d
+docker compose ps
+```
+
+Ouvre l'interface Streamlit sur `http://localhost:8501`, l'API sur
+`http://localhost:8001/docs` et le suivi MLflow sur `http://localhost:5001`.
+Streamlit appelle l'API sur le réseau Docker via `http://api:8000/predict`.
+
+Le serveur MLflow conserve sa base SQLite et ses artefacts dans le volume
+Docker nommé `mlflow_data`. Pour envoyer un entraînement lancé depuis WSL vers
+ce serveur, exécute :
+
+```bash
+MLFLOW_TRACKING_URI=http://127.0.0.1:5001 python main.py
+```
+
+Les nouveaux runs, métriques et modèles seront visibles dans l'interface
+MLflow. Pour arrêter les services sans supprimer les données persistantes :
+
+```bash
+docker compose down
+```
+
+N'utilise pas `docker compose down -v` si tu veux conserver la base MLflow et
+les artefacts du volume.

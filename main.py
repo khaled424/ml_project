@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 from typing import Tuple
 
 import joblib
@@ -15,8 +16,9 @@ from model_pipeline import (
     train_and_log_model,
 )
 
-DEFAULT_DATA_PATH = "/home/khaled/ml_project/Churn_Modelling.csv"
-DEFAULT_PREPARED_DATA_PATH = "/home/khaled/ml_project/prepared_data.joblib"
+PROJECT_DIR = Path(__file__).resolve().parent
+DEFAULT_DATA_PATH = str(PROJECT_DIR / "data" / "Churn_Modelling.csv")
+DEFAULT_PREPARED_DATA_PATH = str(PROJECT_DIR / "artifacts" / "prepared_data.joblib")
 PreparedData = Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
 
 

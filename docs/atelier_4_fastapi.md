@@ -36,9 +36,9 @@ En MLOps, l'étape de **Mise en Production (Serving)** consiste à rendre les pr
    source venv/bin/activate
    ```
 
-2. Assurez-vous d'installer les bibliothèques web et de mettre à jour votre fichier `requirements.txt` :
+2. Installez les dépendances du projet depuis le manifeste unique :
    ```bash
-   pip install fastapi uvicorn pydantic joblib pandas scikit-learn
+   python -m pip install -r requirements.txt
    ```
 
 3. Vérifiez la présence du fichier modèle `model.joblib` dans votre répertoire de projet `~/ml_project/`.

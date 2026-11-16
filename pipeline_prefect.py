@@ -11,7 +11,7 @@ MAIN_PY = PROJECT_DIR / "main.py"
 REQUIREMENTS_FILE = PROJECT_DIR / "requirements.txt"
 DOCKER_IMAGE_NAME = "khaled_4bi6_mlops"
 DOCKERHUB_USERNAME = "khaledgannounhahahaha"
-DOCKER_IMAGE_TAG = "1.0"
+DOCKER_IMAGE_TAG = "2.0"
 
 
 @task(name="update-project")

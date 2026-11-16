@@ -3,7 +3,7 @@ __pycache__/
 .pytest_cache/
 .prefect/
 *.joblib
-Churn_Modelling.csv
+data/Churn_Modelling.csv
 mlflow.db
 mlflow.db-shm
 mlflow.db-wal

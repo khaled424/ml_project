@@ -1,0 +1,43 @@
+services:
+  api:
+    image: khaled_4bi6_mlops:optimized
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8001:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/').read()"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    image: khaled_4bi6_frontend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      API_URL: http://api:8000/predict
+    ports:
+      - "127.0.0.1:8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mlflow:
+    image: khaled_4bi6_mlflow:3.18.0
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    ports:
+      - "127.0.0.1:5001:5000"
+    volumes:
+      - mlflow_data:/mlflow
+
+volumes:
+  mlflow_data:

@@ -57,7 +57,7 @@ Alors que des outils généraux de CI/CD comme **Jenkins**, **GitLab CI**, ou **
    ```bash
    pip install prefect
    ```
-3. Mettez à jour le fichier `requirements.txt` en y ajoutant `prefect`.
+3. Vérifiez que `prefect` est présent dans `requirements.txt`, puis installez les dépendances avec ce fichier.
 
 ---
 

@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import joblib
-import mlflow
-import mlflow.sklearn
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -19,7 +17,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 TARGET_COLUMN = "Exited"
-DEFAULT_MODEL_PATH = "/home/khaled/ml_project/classifier.joblib"
+DEFAULT_MODEL_PATH = str(
+    Path(__file__).resolve().parent / "artifacts" / "classifier.joblib"
+)
 MLFLOW_EXPERIMENT_NAME = "Churn_Prediction_Experiment"
 MLFLOW_MODEL_NAME = "ChurnRandomForestModel"
 
@@ -30,6 +30,8 @@ def configure_mlflow() -> None:
     La variable ``MLFLOW_TRACKING_URI`` peut remplacer l'URI locale, notamment
     pour isoler les tests. L'interface MLflow doit utiliser la même base.
     """
+    import mlflow
+
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
     if not tracking_uri:
         tracking_db = Path(__file__).resolve().parent / "mlflow.db"
@@ -289,6 +291,9 @@ def train_and_log_model(
         Les erreurs MLflow de configuration, tracking ou registre sont
         propagées à l'appelant.
     """
+    import mlflow
+    import mlflow.sklearn
+
     configure_mlflow()
 
     with mlflow.start_run(run_name="RandomForest_Run"):

@@ -1,12 +1,22 @@
-numpy
-pandas
-scikit-learn
+# API runtime
+fastapi==0.150.0
+joblib==1.6.0
+numpy==2.5.5
+pandas==3.1.1
+scikit-learn==1.9.1
+uvicorn==0.54.0
+
+# Frontend
+requests==2.34.2
+streamlit==1.67.0
+
+# Development and training
 matplotlib
 jupyter
-mlflow
-fastapi
-uvicorn
-joblib
+mlflow==3.18.0
 prefect
 pytest
 flake8
+
+# Atelier 7: Elasticsearch 7.x client for the 7.17.9 server
+elasticsearch==7.17.12
