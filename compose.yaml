@@ -39,5 +39,23 @@ services:
     volumes:
       - mlflow_data:/mlflow
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      xpack.security.enabled: "false"
+    ports:
+      - "127.0.0.1:9200:9200"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.9
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "127.0.0.1:5601:5601"
+    depends_on:
+      - elasticsearch
+
 volumes:
   mlflow_data:

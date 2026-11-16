@@ -126,67 +126,7 @@ docker compose ps
 
 ### **Étape 3 : Script d'intégration Python (MLflow + Elasticsearch)**
 
-Créez le script Python `monitoring_pipeline.py` pour exporter simultanément les métriques d'entraînement et de prédiction vers **MLflow** et **Elasticsearch** :
-
-```python
-import datetime
-import os
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-import mlflow
-import mlflow.sklearn
-from elasticsearch import Elasticsearch
-
-# Connexion à Elasticsearch
-es = Elasticsearch(["http://localhost:9200"])
-
-def run_monitored_pipeline():
-    # Chargement et préparation des données
-    data = pd.read_csv("data/Churn_Modelling.csv")
-    X = data.drop(columns=['RowNumber', 'CustomerId', 'Surname', 'Exited', 'Geography', 'Gender'])
-    y = data['Exited']
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # L'URI par défaut pointe vers le service MLflow du compose.yaml du projet.
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5001"))
-
-    # Exécution MLflow avec export Elasticsearch
-    with mlflow.start_run() as run:
-        n_estimators = 100
-        max_depth = 10
-        
-        model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, random_state=42)
-        model.fit(X_train, y_train)
-        
-        preds = model.predict(X_test)
-        acc = accuracy_score(y_test, preds)
-        
-        # Enregistrement dans MLflow
-        mlflow.log_param("n_estimators", n_estimators)
-        mlflow.log_param("max_depth", max_depth)
-        mlflow.log_metric("test_accuracy", acc)
-        mlflow.sklearn.log_model(model, "random_forest_model")
-        
-    # Envoi des métriques vers Elasticsearch après la fin du run MLflow
-    doc = {
-        "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "run_id": run.info.run_id,
-        "experiment_id": run.info.experiment_id,
-        "status": "FINISHED",
-        "metric_test_accuracy": float(acc),
-        "param_n_estimators": str(n_estimators),
-        "param_max_depth": str(max_depth)
-    }
-
-    res = es.index(index="mlflow-metrics", body=doc)
-    print(f"[Elasticsearch] Document indexé avec ID : {res['_id']}")
-
-if __name__ == "__main__":
-    run_monitored_pipeline()
-```
+Le fichier `monitoring_pipeline.py` à la racine réutilise le prétraitement, l'entraînement et l'évaluation de `model_pipeline.py`. Il envoie les métriques de test et le modèle à MLflow, puis indexe les métriques dans Elasticsearch. Si l'index `mlflow-metrics` n'existe pas encore, le script le crée avec son mapping.
 
 Exécutez le script depuis la racine du projet, avec l'environnement virtuel activé et les conteneurs MLflow et Elasticsearch démarrés :
 
@@ -194,36 +134,21 @@ Exécutez le script depuis la racine du projet, avec l'environnement virtuel act
 python monitoring_pipeline.py
 ```
 
+Le script affiche l'identifiant du run MLflow, l'accuracy de test et l'identifiant du document Elasticsearch. Il accepte aussi les options `--data-path`, `--elasticsearch-url`, `--mlflow-tracking-uri` et `--index`.
+
 ---
 
 ### **Étape 4 : Définition du Mapping Elasticsearch et Configuration Kibana**
 
 1. Accédez à l'interface **Kibana** sur **`http://localhost:5601`**.
-2. Dans **DevTools**, exécutez le script d'initialisation de l'index `PUT /mlflow-metrics` :
+2. Dans **DevTools**, vérifiez le mapping créé par le script :
 
 ```json
-PUT /mlflow-metrics
-{
-  "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0
-  },
-  "mappings": {
-    "properties": {
-      "@timestamp": { "type": "date" },
-      "run_id": { "type": "keyword" },
-      "experiment_id": { "type": "keyword" },
-      "status": { "type": "keyword" },
-      "metric_test_accuracy": { "type": "float" },
-      "param_n_estimators": { "type": "keyword" },
-      "param_max_depth": { "type": "keyword" }
-    }
-  }
-}
+GET /mlflow-metrics/_mapping
 ```
 
 3. Rendez-vous dans **Stack Management > Index Patterns** et créez le pattern `mlflow-metrics` avec le filtre `@timestamp`.
-4. Explorez les prédictions et métriques via l'onglet **Discover** et construisez vos tableaux de bord interactifs.
+4. Explorez les métriques via l'onglet **Discover** et construisez vos tableaux de bord interactifs. Pour afficher les documents indexés, vous devez avoir exécuté le script de l'étape 3.
 
 ---
 
