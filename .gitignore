@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+.pytest_cache/
+.prefect/
+*.joblib
+Churn_Modelling.csv
