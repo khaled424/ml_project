@@ -11,6 +11,16 @@ MAIN_PY = PROJECT_DIR / "main.py"
 REQUIREMENTS_FILE = PROJECT_DIR / "requirements.txt"
 
 
+@task(name="update-project")
+def update_project() -> None:
+    """Récupère les derniers changements depuis GitHub."""
+    subprocess.run(
+        ["git", "pull", "--ff-only", "origin", "main"],
+        cwd=PROJECT_DIR,
+        check=True,
+    )
+
+
 @task(name="install-dependencies")
 def install_dependencies() -> None:
     """Installe les dépendances déclarées par le projet."""
@@ -94,6 +104,7 @@ def evaluate_model_task() -> None:
 @flow(name="code", log_prints=True)
 def flow_code() -> None:
     """Installe les dépendances puis vérifie le code et les tests."""
+    update_project()
     install_dependencies()
     check_code_quality()
     run_unit_tests()
@@ -102,6 +113,7 @@ def flow_code() -> None:
 @flow(name="train", log_prints=True)
 def flow_train() -> None:
     """Prépare les données, puis entraîne le modèle."""
+    update_project()
     prepare_data_task()
     train_model_task()
 
@@ -109,6 +121,7 @@ def flow_train() -> None:
 @flow(name="evaluate", log_prints=True)
 def flow_evaluate() -> None:
     """Évalue les données préparées avec le modèle sauvegardé."""
+    update_project()
     evaluate_model_task()
 
 
